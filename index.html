@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <title>メタマップ・ドット開封（正方形パネル）</title>
+  <title>メタマップ・ドット開封（3×3〜6×6）</title>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <style>
     :root {
@@ -110,7 +110,7 @@
       width: max-content;
       height: max-content;
     }
-    /* グリッド（枠線だけ） */
+    /* 背景グリッド */
     .board-grid-background {
       position: relative;
       background:
@@ -121,15 +121,13 @@
       border-radius: 8px;
       box-shadow: 0 0 0 1px rgba(0,0,0,0.7);
     }
-
-    /* 1セル = 24px 四方 */
     .board-grid-background-inner {
-      width: calc(40 * 24px);
-      height: calc(40 * 24px);
+      width: calc(24 * 24px);  /* 24×24 マスの盤面 */
+      height: calc(24 * 24px);
       position: relative;
     }
 
-    /* パネル（正方形） */
+    /* 正方形パネル */
     .image-panel {
       position: absolute;
       border-radius: 10px;
@@ -148,6 +146,7 @@
       pointer-events: none;
     }
 
+    /* パネル上のドット */
     .dot-grid {
       position: absolute;
       inset: 0;
@@ -382,9 +381,9 @@
 <header>
   <div class="title">
     META MAP DOTS
-    <span class="badge">SQUARE PANELS DEMO</span>
+    <span class="badge">3×3 / 4×4 / 5×5 / 6×6</span>
   </div>
-  <div class="info">ドットのサイズは一定・3〜6マス四方の正方形パネルを15枚ランダム配置</div>
+  <div class="info">ドットサイズ一定・4つの正方形パネルを近くに配置</div>
 </header>
 
 <div class="layout">
@@ -447,25 +446,30 @@
 
 <script>
   // ===== 基本設定 =====
-  const BOARD_COLS = 40;          // 盤全体のマス数（横）
-  const BOARD_ROWS = 40;          // 盤全体のマス数（縦）
-  const CELL_PX    = 24;          // 1マスのピクセルサイズ
-  const PANEL_COUNT = 15;         // パネル枚数
-  const MIN_PANEL_SIZE = 3;       // 1パネルの最小マス数（正方形）
-  const MAX_PANEL_SIZE = 6;       // 最大マス数
+  const BOARD_COLS = 24;          // 盤のマス数（横）
+  const BOARD_ROWS = 24;          // 盤のマス数（縦）
+  const CELL_PX    = 24;          // 1マスのピクセル
 
   const MIN_ZOOM = 0.5;
   const MAX_ZOOM = 2.5;
   const ZOOM_STEP = 0.2;
 
-  // 状態
+  // 残り回数
   let zoomLevel = 1.0;
   let quotaTotal = 0;
   let quotaUsed  = 0;
 
-  // パネル情報
-  // { id, size, x, y, opened[ size*size ] }
-  const panels = [];
+  // 4つのパネル（3×3, 4×4, 5×5, 6×6）を近くに並べて配置
+  // 位置は盤中央付近に手動で配置
+  const panels = [
+    { id: "panel_3", size: 3, x: 4,  y: 4  }, // 左上：3×3
+    { id: "panel_4", size: 4, x: 10, y: 4  }, // 右上：4×4
+    { id: "panel_5", size: 5, x: 4,  y: 12 }, // 左下：5×5
+    { id: "panel_6", size: 6, x: 11, y: 12 }  // 右下：6×6
+  ];
+  panels.forEach(p => {
+    p.opened = new Array(p.size * p.size).fill(false);
+  });
 
   // DOM
   const boardInner        = document.getElementById("boardInner");
@@ -509,62 +513,14 @@
     boardScaleWrapper.style.transform = `scale(${zoomLevel})`;
     zoomValueEl.textContent = zoomLevel.toFixed(1) + "×";
   }
-
   function setZoom(v) {
     zoomLevel = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, v));
     applyZoom();
   }
 
-  // ===== パネル配置ロジック =====
-  // 占有マップ（重なりチェック用）
-  const occupied = new Array(BOARD_COLS * BOARD_ROWS).fill(false);
-  function idx(x, y) { return y * BOARD_COLS + x; }
-
-  function canPlace(size, x, y) {
-    if (x < 0 || y < 0) return false;
-    if (x + size > BOARD_COLS || y + size > BOARD_ROWS) return false;
-    for (let dy = 0; dy < size; dy++) {
-      for (let dx = 0; dx < size; dx++) {
-        if (occupied[idx(x + dx, y + dy)]) return false;
-      }
-    }
-    return true;
-  }
-
-  function occupy(size, x, y) {
-    for (let dy = 0; dy < size; dy++) {
-      for (let dx = 0; dx < size; dx++) {
-        occupied[idx(x + dx, y + dy)] = true;
-      }
-    }
-  }
-
-  function randomInt(min, maxInclusive) {
-    return Math.floor(Math.random() * (maxInclusive - min + 1)) + min;
-  }
-
-  function generatePanels() {
-    let created = 0;
-    let safety = 0;
-    while (created < PANEL_COUNT && safety < 1000) {
-      safety++;
-      const size = randomInt(MIN_PANEL_SIZE, MAX_PANEL_SIZE);
-      const x = randomInt(0, BOARD_COLS - size);
-      const y = randomInt(0, BOARD_ROWS - size);
-      if (!canPlace(size, x, y)) continue;
-
-      occupy(size, x, y);
-      const id = "panel_" + created;
-      const opened = new Array(size * size).fill(false);
-      panels.push({ id, size, x, y, opened });
-      created++;
-    }
-  }
-
   // ===== DOM生成 =====
   function createPanelElements() {
     const frag = document.createDocumentFragment();
-
     panels.forEach(panel => {
       const px = panel.x * CELL_PX;
       const py = panel.y * CELL_PX;
@@ -607,7 +563,7 @@
   function onDotClick(e) {
     const btn = e.currentTarget;
     const panelId = btn.dataset.panelId;
-    const index = Number(btn.dataset.index);
+    const index   = Number(btn.dataset.index);
 
     const panel = panels.find(p => p.id === panelId);
     if (!panel) return;
@@ -653,7 +609,6 @@
 
   // ===== 初期化 =====
   function init() {
-    generatePanels();
     createPanelElements();
     updateQuotaUI();
     applyZoom();
