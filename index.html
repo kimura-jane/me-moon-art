@@ -1,0 +1,893 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <title>メタマップ共通盤デモ</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <style>
+    :root {
+      --bg: #050608;
+      --panel-bg: #101218;
+      --accent: #f0b90b;
+      --accent-soft: rgba(240,185,11,0.15);
+      --text-main: #f9fafb;
+      --text-sub: #9ca3af;
+      --border-subtle: #1f2933;
+      --danger: #f97373;
+      --cell-border: #111827;
+    }
+    * {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      background: radial-gradient(circle at top, #111827 0, #020617 55%, #000 100%);
+      color: var(--text-main);
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      padding: 12px 16px;
+      border-bottom: 1px solid #111827;
+      backdrop-filter: blur(12px);
+      background: linear-gradient(90deg, rgba(15,23,42,0.95), rgba(15,23,42,0.85));
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+    header .title {
+      font-size: 16px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    header .title span.badge {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid var(--accent-soft);
+      color: var(--accent);
+      background: rgba(15,23,42,0.9);
+    }
+    header .info {
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+
+    .layout {
+      flex: 1;
+      display: flex;
+      flex-direction: row;
+      padding: 8px;
+      gap: 8px;
+      min-height: 0;
+    }
+    @media (max-width: 900px) {
+      .layout {
+        flex-direction: column;
+      }
+    }
+
+    /* 左：盤エリア */
+    .board-panel {
+      flex: 2;
+      min-width: 0;
+      background: radial-gradient(circle at top, #020617 0, #020617 60%, #000 100%);
+      border-radius: 16px;
+      border: 1px solid #111827;
+      position: relative;
+      padding: 8px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .board-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      color: var(--text-sub);
+    }
+    .board-viewport {
+      position: relative;
+      flex: 1;
+      min-height: 260px;
+      border-radius: 12px;
+      border: 1px solid #1f2937;
+      background: radial-gradient(circle at center, #020617 0, #020617 50%, #000 100%);
+      overflow: auto;
+      padding: 8px;
+    }
+    .board-scale-wrapper {
+      /* 拡大縮小ターゲット */
+      transform-origin: top left;
+      transition: transform 0.15s ease-out;
+      display: inline-block;
+    }
+    .board-grid {
+      display: grid;
+      grid-template-columns: repeat(30, 20px);
+      grid-template-rows: repeat(30, 20px);
+      gap: 1px;
+      background-color: #020617;
+      padding: 1px;
+      border-radius: 8px;
+      box-shadow: 0 0 0 1px #020617, 0 0 0 2px #000;
+    }
+    .cell {
+      width: 20px;
+      height: 20px;
+      border-radius: 3px;
+      background: radial-gradient(circle at top, #030712 0, #020617 50%, #000 100%);
+      border: 1px solid var(--cell-border);
+      cursor: pointer;
+      position: relative;
+    }
+    .cell:hover {
+      border-color: var(--accent-soft);
+    }
+    .cell.filled {
+      border-color: rgba(15,23,42,0.9);
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+    }
+    .cell.filled::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      border-radius: inherit;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.6);
+    }
+
+    .zoom-controls {
+      position: absolute;
+      top: 12px;
+      left: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      z-index: 10;
+    }
+    .zoom-button {
+      border: 1px solid #1f2937;
+      background: rgba(15,23,42,0.9);
+      border-radius: 999px;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 16px;
+      color: var(--text-main);
+    }
+    .zoom-button:hover {
+      border-color: var(--accent-soft);
+      background: rgba(15,23,42,1);
+    }
+    .zoom-label {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      background: rgba(15,23,42,0.85);
+      border: 1px solid rgba(148,163,184,0.2);
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+
+    /* 右：操作パネル */
+    .control-panel {
+      flex: 1.2;
+      min-width: 260px;
+      background: radial-gradient(circle at top, #020617 0, #020617 60%, #000 100%);
+      border-radius: 16px;
+      border: 1px solid #111827;
+      padding: 10px 10px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      max-height: 100%;
+      overflow: auto;
+    }
+
+    .section {
+      border-radius: 12px;
+      background: linear-gradient(145deg, rgba(15,23,42,0.96), rgba(15,23,42,0.9));
+      border: 1px solid #111827;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .section-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      gap: 8px;
+    }
+    .section-title {
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .section-caption {
+      font-size: 11px;
+      color: var(--text-sub);
+    }
+
+    label {
+      font-size: 11px;
+      color: var(--text-sub);
+      display: block;
+      margin-bottom: 2px;
+    }
+    input[type="email"],
+    input[type="text"] {
+      width: 100%;
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1px solid #1f2937;
+      background: #020617;
+      color: var(--text-main);
+      font-size: 12px;
+    }
+    input[type="email"]:focus,
+    input[type="text"]:focus {
+      outline: none;
+      border-color: var(--accent-soft);
+      box-shadow: 0 0 0 1px rgba(240,185,11,0.2);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid transparent;
+      font-size: 12px;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-primary {
+      background: radial-gradient(circle at top left, #fbbf24, #f59e0b);
+      color: #111827;
+      font-weight: 600;
+      box-shadow: 0 8px 16px rgba(251,191,36,0.25);
+    }
+    .btn-primary:hover {
+      filter: brightness(1.05);
+    }
+    .btn-outline {
+      border-color: #1f2937;
+      background: rgba(15,23,42,0.9);
+      color: var(--text-main);
+    }
+    .btn-outline:hover {
+      border-color: var(--accent-soft);
+      background: rgba(15,23,42,1);
+    }
+    .btn-sm {
+      padding: 4px 8px;
+      font-size: 11px;
+    }
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: default;
+      box-shadow: none;
+    }
+
+    .charge-row {
+      display: flex;
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .charge-row .btn {
+      flex-shrink: 0;
+    }
+
+    .quota-display {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      padding: 6px 8px;
+      border-radius: 999px;
+      background: rgba(15,23,42,0.9);
+      border: 1px solid #1f2937;
+    }
+    .quota-display strong {
+      color: var(--accent);
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+    }
+    .quota-display span.status {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: 999px;
+      border: 1px solid rgba(55,65,81,0.8);
+      background: rgba(15,23,42,0.95);
+    }
+    .quota-display span.status.ok {
+      border-color: rgba(34,197,94,0.7);
+      color: #bbf7d0;
+      background: rgba(22,163,74,0.1);
+    }
+    .quota-display span.status.zero {
+      border-color: rgba(239,68,68,0.7);
+      color: #fecaca;
+      background: rgba(239,68,68,0.08);
+    }
+
+    .palette-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+      gap: 6px;
+    }
+    .palette-item {
+      border-radius: 10px;
+      padding: 6px;
+      border: 1px solid #1f2937;
+      background: radial-gradient(circle at top, #020617 0, #020617 60%, #000 100%);
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 11px;
+    }
+    .palette-item-header {
+      height: 38px;
+      border-radius: 8px;
+      background-size: cover;
+      background-position: center;
+      background-repeat: no-repeat;
+      position: relative;
+      overflow: hidden;
+    }
+    .palette-item-header::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      box-shadow: inset 0 0 0 1px rgba(0,0,0,0.4);
+    }
+    .palette-item.active {
+      border-color: rgba(250,204,21,0.9);
+      box-shadow: 0 0 0 1px rgba(250,204,21,0.5);
+    }
+    .palette-label-main {
+      font-weight: 600;
+      color: var(--text-main);
+    }
+    .palette-label-sub {
+      color: var(--text-sub);
+      font-size: 10px;
+    }
+
+    .size-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .size-chip {
+      border-radius: 999px;
+      padding: 3px 8px;
+      border: 1px solid #1f2937;
+      background: rgba(15,23,42,0.9);
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+    }
+    .size-chip span.dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 999px;
+      background: var(--accent-soft);
+    }
+    .size-chip.active {
+      border-color: rgba(250,204,21,0.9);
+      background: rgba(250,204,21,0.12);
+      color: var(--accent);
+    }
+
+    .hint {
+      font-size: 11px;
+      color: var(--text-sub);
+      line-height: 1.4;
+    }
+
+    .toast {
+      position: fixed;
+      left: 50%;
+      bottom: 16px;
+      transform: translateX(-50%);
+      padding: 8px 12px;
+      border-radius: 999px;
+      background: rgba(15,23,42,0.98);
+      border: 1px solid #1f2937;
+      color: var(--text-sub);
+      font-size: 11px;
+      max-width: 90%;
+      text-align: center;
+      z-index: 50;
+      display: none;
+    }
+    .toast.error {
+      border-color: rgba(239,68,68,0.7);
+      color: #fecaca;
+      background: rgba(15,23,42,0.98);
+    }
+    .toast.show {
+      display: block;
+      animation: fadein 0.15s ease-out, fadeout 0.3s ease-in 2.3s forwards;
+    }
+    @keyframes fadein {
+      from { opacity: 0; transform: translate(-50%, 4px); }
+      to { opacity: 1; transform: translate(-50%, 0); }
+    }
+    @keyframes fadeout {
+      to { opacity: 0; transform: translate(-50%, 6px); }
+    }
+  </style>
+</head>
+<body>
+<header>
+  <div class="title">
+    META MAP BOARD
+    <span class="badge">DEMO FRONT</span>
+  </div>
+  <div class="info">
+    画像は常に公開 / メール＋slugで残り回数をチャージ
+  </div>
+</header>
+
+<div class="layout">
+  <!-- 左：盤 -->
+  <section class="board-panel">
+    <div class="board-header">
+      <div>共通盤（30 × 30 グリッド）</div>
+      <div style="font-size:11px;color:#6b7280;">タップで配置 / 拡大縮小して操作しやすく</div>
+    </div>
+    <div class="board-viewport" id="boardViewport">
+      <div class="board-scale-wrapper" id="boardScaleWrapper">
+        <div class="board-grid" id="boardGrid">
+          <!-- cells を JS で生成 -->
+        </div>
+      </div>
+
+      <div class="zoom-controls">
+        <button class="zoom-button" id="zoomInBtn">＋</button>
+        <button class="zoom-button" id="zoomOutBtn">−</button>
+        <button class="zoom-button" id="zoomResetBtn">⭯</button>
+      </div>
+      <div class="zoom-label">
+        Zoom: <span id="zoomValue">1.0×</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- 右：操作パネル -->
+  <aside class="control-panel">
+    <!-- チャージ -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">チャージ（デモ）</div>
+        <div class="section-caption">実運用ではここを GAS の /charge と接続</div>
+      </div>
+      <div>
+        <label for="emailInput">メールアドレス</label>
+        <input type="email" id="emailInput" placeholder="example@mail.com" autocomplete="email">
+      </div>
+      <div>
+        <label for="slugInput">slug（チケットコード）</label>
+        <input type="text" id="slugInput" placeholder="campaign-xxx">
+      </div>
+      <div class="charge-row">
+        <button class="btn btn-primary" id="chargeBtn">
+          チャージ（+3回 / デモ）
+        </button>
+        <button class="btn btn-outline btn-sm" id="resetQuotaBtn">
+          回数リセット（デモ用）
+        </button>
+      </div>
+      <div class="quota-display">
+        <div>残り回数：<strong id="quotaRemaining">0</strong></div>
+        <span class="status zero" id="quotaStatus">0回 / 閲覧のみ</span>
+      </div>
+    </div>
+
+    <!-- 画像パレット -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">画像パレット</div>
+        <div class="section-caption">あとでNFT画像のURLに差し替え</div>
+      </div>
+      <div class="palette-grid" id="paletteGrid">
+        <!-- JSで生成 -->
+      </div>
+      <div class="hint">
+        今は「色と名前」だけのダミー。image_url を持たせれば、ここを NFT 画像にできる。
+      </div>
+    </div>
+
+    <!-- サイズ & 配置 -->
+    <div class="section">
+      <div class="section-header">
+        <div class="section-title">サイズと配置</div>
+        <div class="section-caption">1配置 = 1回消費 / 合計15枚まで</div>
+      </div>
+      <div>
+        <label>ブロックサイズ</label>
+        <div class="size-row" id="sizeRow">
+          <!-- JSで生成 -->
+        </div>
+      </div>
+      <div class="hint">
+        ① 画像を選ぶ<br>
+        ② サイズを選ぶ（3×3〜6×6）<br>
+        ③ 盤のマスをタップ → 設置（重なりは自動チェック）
+      </div>
+      <div class="hint" style="margin-top:4px;">
+        拡大縮小ボタンで盤を大きくすれば、スマホでもタップしやすくなる。
+      </div>
+    </div>
+  </aside>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ====== 設定 ======
+  const BOARD_SIZE = 30;
+  const MAX_PLACEMENTS = 15;
+  const MIN_ZOOM = 0.5;
+  const MAX_ZOOM = 2.5;
+  const ZOOM_STEP = 0.2;
+
+  // デモ用パレット（あとで imageUrl を NFT 画像に差し替えればOK）
+  const IMAGE_PALETTE = [
+    { id: 'img1', name: 'TAF DOG A', description: '3×3 〜 6×6 ブロック用', color: '#f97373' },
+    { id: 'img2', name: 'TAF DOG B', description: '別バリアント',       color: '#fb923c' },
+    { id: 'img3', name: 'TAF DOG C', description: 'レア変化系',         color: '#facc15' },
+    { id: 'img4', name: 'TAF DOG D', description: 'JOMON モチーフ',     color: '#4ade80' },
+    { id: 'img5', name: 'TAF DOG E', description: '夜カフェイメージ',   color: '#38bdf8' },
+    { id: 'img6', name: 'TAF DOG F', description: 'スペシャル枠',       color: '#a855f7' }
+  ];
+
+  const SIZE_OPTIONS = [3, 4, 5, 6];
+
+  // ====== 状態 ======
+  let zoomLevel = 1.0;
+  let quotaTotal = 0;
+  let quotaUsed = 0;
+  let placements = []; // {id, imageId, size, x, y}
+  let cellOwner = new Array(BOARD_SIZE * BOARD_SIZE).fill(null);
+  let selectedImageId = null;
+  let selectedSize = 3;
+
+  // ====== 要素取得 ======
+  const boardGrid = document.getElementById('boardGrid');
+  const boardScaleWrapper = document.getElementById('boardScaleWrapper');
+  const zoomValueEl = document.getElementById('zoomValue');
+  const zoomInBtn = document.getElementById('zoomInBtn');
+  const zoomOutBtn = document.getElementById('zoomOutBtn');
+  const zoomResetBtn = document.getElementById('zoomResetBtn');
+  const paletteGrid = document.getElementById('paletteGrid');
+  const sizeRow = document.getElementById('sizeRow');
+  const quotaRemainingEl = document.getElementById('quotaRemaining');
+  const quotaStatusEl = document.getElementById('quotaStatus');
+  const toastEl = document.getElementById('toast');
+  const chargeBtn = document.getElementById('chargeBtn');
+  const resetQuotaBtn = document.getElementById('resetQuotaBtn');
+  const emailInput = document.getElementById('emailInput');
+  const slugInput = document.getElementById('slugInput');
+
+  // ====== ユーティリティ ======
+  function showToast(message, type = 'info') {
+    toastEl.textContent = message;
+    toastEl.classList.remove('error', 'show');
+    if (type === 'error') {
+      toastEl.classList.add('error');
+    }
+    // 再トリガー用
+    void toastEl.offsetWidth;
+    toastEl.classList.add('show');
+  }
+
+  function updateQuotaUI() {
+    const remaining = quotaTotal - quotaUsed;
+    quotaRemainingEl.textContent = remaining;
+    if (remaining > 0) {
+      quotaStatusEl.textContent = remaining + '回 / 配置可能';
+      quotaStatusEl.classList.remove('zero');
+      quotaStatusEl.classList.add('ok');
+    } else {
+      quotaStatusEl.textContent = '0回 / 閲覧のみ';
+      quotaStatusEl.classList.remove('ok');
+      quotaStatusEl.classList.add('zero');
+    }
+  }
+
+  function applyZoom() {
+    boardScaleWrapper.style.transform = `scale(${zoomLevel})`;
+    zoomValueEl.textContent = zoomLevel.toFixed(1) + '×';
+  }
+
+  function setZoom(newZoom) {
+    zoomLevel = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, newZoom));
+    applyZoom();
+  }
+
+  function indexFromXY(x, y) {
+    return y * BOARD_SIZE + x;
+  }
+
+  function rectsOverlap(a, b) {
+    // a, b: {x, y, size}
+    const aX2 = a.x + a.size;
+    const aY2 = a.y + a.size;
+    const bX2 = b.x + b.size;
+    const bY2 = b.y + b.size;
+    // 分離軸判定（1マスでも重なれば true）
+    if (aX2 <= b.x || bX2 <= a.x) return false;
+    if (aY2 <= b.y || bY2 <= a.y) return false;
+    return true;
+  }
+
+  function canPlace(imageId, size, x, y) {
+    // 盤外チェック
+    if (x < 0 || y < 0 || x + size > BOARD_SIZE || y + size > BOARD_SIZE) {
+      return { ok: false, reason: '盤の外にはみ出しています' };
+    }
+    // 既存タイル数
+    if (placements.length >= MAX_PLACEMENTS) {
+      return { ok: false, reason: 'これ以上は配置できません（最大 ' + MAX_PLACEMENTS + '）' };
+    }
+    // 重なりチェック
+    const newRect = { x, y, size };
+    for (const p of placements) {
+      const rect = { x: p.x, y: p.y, size: p.size };
+      if (rectsOverlap(newRect, rect)) {
+        return { ok: false, reason: '既に配置済みのブロックと重なっています' };
+      }
+    }
+    return { ok: true };
+  }
+
+  function placeTile(imageId, size, x, y) {
+    const remaining = quotaTotal - quotaUsed;
+    if (remaining <= 0) {
+      showToast('残り回数がありません。メール＋slugでチャージしてから配置してください。', 'error');
+      return;
+    }
+    const check = canPlace(imageId, size, x, y);
+    if (!check.ok) {
+      showToast(check.reason, 'error');
+      return;
+    }
+
+    const placementId = 'plc_' + (placements.length + 1);
+    const placement = { id: placementId, imageId, size, x, y };
+    placements.push(placement);
+
+    // セルに割り当て
+    for (let dy = 0; dy < size; dy++) {
+      for (let dx = 0; dx < size; dx++) {
+        const cx = x + dx;
+        const cy = y + dy;
+        const idx = indexFromXY(cx, cy);
+        cellOwner[idx] = placementId;
+      }
+    }
+
+    quotaUsed++;
+    updateQuotaUI();
+    renderBoardCells(); // 再描画
+    showToast('配置しました（残り ' + (quotaTotal - quotaUsed) + ' 回）');
+  }
+
+  function getPlacementById(id) {
+    return placements.find(p => p.id === id) || null;
+  }
+
+  // ====== レンダリング ======
+  function createBoardCells() {
+    const frag = document.createDocumentFragment();
+    for (let y = 0; y < BOARD_SIZE; y++) {
+      for (let x = 0; x < BOARD_SIZE; x++) {
+        const cell = document.createElement('div');
+        cell.className = 'cell';
+        cell.dataset.x = x.toString();
+        cell.dataset.y = y.toString();
+        cell.addEventListener('click', onCellClick);
+        frag.appendChild(cell);
+      }
+    }
+    boardGrid.appendChild(frag);
+  }
+
+  function renderBoardCells() {
+    const cells = boardGrid.children;
+    for (let i = 0; i < cells.length; i++) {
+      const cell = cells[i];
+      const ownerId = cellOwner[i];
+      if (!ownerId) {
+        cell.classList.remove('filled');
+        cell.style.backgroundImage = 'none';
+        continue;
+      }
+      const placement = getPlacementById(ownerId);
+      if (!placement) {
+        cell.classList.remove('filled');
+        cell.style.backgroundImage = 'none';
+        continue;
+      }
+      const paletteItem = IMAGE_PALETTE.find(img => img.id === placement.imageId);
+      cell.classList.add('filled');
+      if (paletteItem) {
+        // デモ用：背景色グラデーションで疑似画像
+        const color = paletteItem.color;
+        cell.style.backgroundImage =
+          `linear-gradient(135deg, ${color}, #020617)`;
+      } else {
+        cell.style.backgroundImage = 'none';
+      }
+    }
+  }
+
+  function renderPalette() {
+    const frag = document.createDocumentFragment();
+    IMAGE_PALETTE.forEach((img, index) => {
+      const item = document.createElement('div');
+      item.className = 'palette-item';
+      item.dataset.imageId = img.id;
+
+      const header = document.createElement('div');
+      header.className = 'palette-item-header';
+      header.style.backgroundImage =
+        `linear-gradient(145deg, ${img.color}, #020617)`;
+
+      const labelMain = document.createElement('div');
+      labelMain.className = 'palette-label-main';
+      labelMain.textContent = img.name;
+
+      const labelSub = document.createElement('div');
+      labelSub.className = 'palette-label-sub';
+      labelSub.textContent = img.description;
+
+      item.appendChild(header);
+      item.appendChild(labelMain);
+      item.appendChild(labelSub);
+
+      item.addEventListener('click', () => {
+        selectedImageId = img.id;
+        updatePaletteActive();
+      });
+
+      if (index === 0) {
+        selectedImageId = img.id;
+      }
+
+      frag.appendChild(item);
+    });
+    paletteGrid.appendChild(frag);
+    updatePaletteActive();
+  }
+
+  function updatePaletteActive() {
+    const items = paletteGrid.querySelectorAll('.palette-item');
+    items.forEach(item => {
+      const id = item.dataset.imageId;
+      if (id === selectedImageId) {
+        item.classList.add('active');
+      } else {
+        item.classList.remove('active');
+      }
+    });
+  }
+
+  function renderSizeOptions() {
+    const frag = document.createDocumentFragment();
+    SIZE_OPTIONS.forEach(size => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'size-chip';
+      chip.dataset.size = size.toString();
+      chip.innerHTML = `<span class="dot"></span>${size} × ${size}`;
+      chip.addEventListener('click', () => {
+        selectedSize = size;
+        updateSizeActive();
+      });
+      frag.appendChild(chip);
+    });
+    sizeRow.appendChild(frag);
+    selectedSize = SIZE_OPTIONS[0];
+    updateSizeActive();
+  }
+
+  function updateSizeActive() {
+    const chips = sizeRow.querySelectorAll('.size-chip');
+    chips.forEach(chip => {
+      const size = Number(chip.dataset.size);
+      if (size === selectedSize) {
+        chip.classList.add('active');
+      } else {
+        chip.classList.remove('active');
+      }
+    });
+  }
+
+  // ====== イベント ======
+  function onCellClick(event) {
+    const cell = event.currentTarget;
+    const x = Number(cell.dataset.x);
+    const y = Number(cell.dataset.y);
+
+    if (!selectedImageId) {
+      showToast('先に画像を選んでください。', 'error');
+      return;
+    }
+    if (!selectedSize) {
+      showToast('先にサイズを選んでください。', 'error');
+      return;
+    }
+
+    placeTile(selectedImageId, selectedSize, x, y);
+  }
+
+  zoomInBtn.addEventListener('click', () => {
+    setZoom(zoomLevel + ZOOM_STEP);
+  });
+  zoomOutBtn.addEventListener('click', () => {
+    setZoom(zoomLevel - ZOOM_STEP);
+  });
+  zoomResetBtn.addEventListener('click', () => {
+    setZoom(1.0);
+  });
+
+  chargeBtn.addEventListener('click', () => {
+    const email = emailInput.value.trim();
+    const slug = slugInput.value.trim();
+    if (!email || !slug) {
+      showToast('メールアドレスとslugを入力してください。', 'error');
+      return;
+    }
+    // 実運用ではここで GAS の /charge を呼び出して、
+    // quotaTotal, quotaUsed をレスポンスで更新する。
+    // 今はデモなので「+3 回」だけ加算。
+    quotaTotal += 3;
+    updateQuotaUI();
+    showToast('デモ：3回分チャージしました。');
+  });
+
+  resetQuotaBtn.addEventListener('click', () => {
+    quotaTotal = 0;
+    quotaUsed = 0;
+    updateQuotaUI();
+    showToast('デモ：残り回数をリセットしました。');
+  });
+
+  // ====== 初期化 ======
+  function init() {
+    createBoardCells();
+    renderBoardCells();
+    renderPalette();
+    renderSizeOptions();
+    updateQuotaUI();
+    applyZoom();
+  }
+
+  init();
+</script>
+</body>
+</html>
