@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <title>メタマップ・ドット開封デモ（15パネル）</title>
+  <title>メタマップ・ドット開封（正方形パネル）</title>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <style>
     :root {
@@ -27,11 +27,11 @@
     header {
       padding: 12px 16px;
       border-bottom: 1px solid #111827;
-      backdrop-filter: blur(12px);
       background: linear-gradient(90deg, rgba(15,23,42,0.95), rgba(15,23,42,0.85));
+      backdrop-filter: blur(12px);
       display: flex;
-      align-items: center;
       justify-content: space-between;
+      align-items: center;
       gap: 12px;
       font-size: 13px;
     }
@@ -68,7 +68,7 @@
       .layout { flex-direction: column; }
     }
 
-    /* 左：15パネル全体 */
+    /* 左：マップ全体 */
     .board-panel {
       flex: 2;
       min-width: 0;
@@ -94,42 +94,61 @@
       border-radius: 12px;
       border: 1px solid #1f2937;
       overflow: auto;
-      background: #000;
+      background: repeating-linear-gradient(
+        45deg,
+        #022c22 0,
+        #022c22 4px,
+        #064e3b 4px,
+        #064e3b 8px
+      );
       padding: 8px;
     }
     .board-scale-wrapper {
+      position: relative;
       transform-origin: top left;
       transition: transform .15s ease-out;
-      display: inline-block;
+      width: max-content;
+      height: max-content;
     }
-    .panel-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-      gap: 8px;
+    /* グリッド（枠線だけ） */
+    .board-grid-background {
+      position: relative;
+      background:
+        linear-gradient(#065f46 1px, transparent 1px),
+        linear-gradient(90deg,#065f46 1px, transparent 1px);
+      background-size: 24px 24px;
+      background-position: 0 0;
+      border-radius: 8px;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.7);
     }
 
-    /* 各パネル（1枚の画像＋ドット） */
-    .image-panel {
+    /* 1セル = 24px 四方 */
+    .board-grid-background-inner {
+      width: calc(40 * 24px);
+      height: calc(40 * 24px);
       position: relative;
-      border-radius: 12px;
+    }
+
+    /* パネル（正方形） */
+    .image-panel {
+      position: absolute;
+      border-radius: 10px;
       overflow: hidden;
       background-image: url("onigiri_truck_square.png"); /* ←同じフォルダに置く */
       background-size: cover;
       background-position: center;
-      aspect-ratio: 1 / 1;
-      box-shadow: 0 8px 16px rgba(0,0,0,0.35);
+      box-shadow: 0 8px 16px rgba(0,0,0,0.4);
     }
     .image-panel::after {
-      /* 上にうっすらガラスっぽいフィルム */
       content: "";
       position: absolute;
       inset: 0;
-      background: radial-gradient(circle at top, rgba(15,23,42,0.5), rgba(15,23,42,0.85));
+      background: radial-gradient(circle at top, rgba(15,23,42,0.4), rgba(15,23,42,0.85));
       mix-blend-mode: soft-light;
       pointer-events: none;
     }
 
-    .dot-block-grid {
+    .dot-grid {
       position: absolute;
       inset: 0;
       display: grid;
@@ -144,12 +163,12 @@
     .dot-cell::before {
       content: "";
       position: absolute;
-      inset: 12%;
+      inset: 15%;
       border-radius: 999px;
       background: radial-gradient(circle at top, rgba(15,23,42,0.98), rgba(6,8,15,0.98));
       box-shadow:
         0 0 0 1px rgba(15,23,42,0.95),
-        0 0 0 2px rgba(0,0,0,0.8);
+        0 0 0 2px rgba(0,0,0,0.85);
       transition: opacity .15s ease-out, transform .1s ease-out;
     }
     .dot-cell:hover::before {
@@ -363,21 +382,23 @@
 <header>
   <div class="title">
     META MAP DOTS
-    <span class="badge">15 PANELS DEMO</span>
+    <span class="badge">SQUARE PANELS DEMO</span>
   </div>
-  <div class="info">1枚の画像を、3×3〜6×6のドットで覆ったパネルを複数配置</div>
+  <div class="info">ドットのサイズは一定・3〜6マス四方の正方形パネルを15枚ランダム配置</div>
 </header>
 
 <div class="layout">
-  <!-- 左：15パネル -->
+  <!-- 左：マップ -->
   <section class="board-panel">
     <div class="board-header">
-      <div>メタマップ（同じ画像をサイズ違いで15枚）</div>
+      <div>メタマップ</div>
       <div>タップでドット開封 / ズームで拡大縮小</div>
     </div>
     <div class="board-viewport">
       <div class="board-scale-wrapper" id="boardScaleWrapper">
-        <div class="panel-grid" id="panelGrid"><!-- JSで生成 --></div>
+        <div class="board-grid-background">
+          <div class="board-grid-background-inner" id="boardInner"><!-- JSでパネル配置 --></div>
+        </div>
       </div>
 
       <div class="zoom-controls">
@@ -391,12 +412,12 @@
     </div>
   </section>
 
-  <!-- 右：チャージUI -->
+  <!-- 右：チャージ -->
   <aside class="control-panel">
     <div class="section">
       <div class="section-header">
         <div class="section-title">チャージ（デモ）</div>
-        <div class="section-caption">本番ではここを GAS の /charge に差し替え</div>
+        <div class="section-caption">本番では GAS / スプシに差し替え</div>
       </div>
       <div>
         <label for="emailInput">メールアドレス</label>
@@ -416,7 +437,7 @@
       </div>
       <div class="hint">
         今はフロントだけで <b>+3回</b> 増えるダミー実装。<br>
-        後で、メール＋slugをスプシに投げて残り回数を管理する。
+        あとでメール＋slugをAPIに投げて、スプシ基準で残り回数を管理する。
       </div>
     </div>
   </aside>
@@ -425,36 +446,29 @@
 <div class="toast" id="toast"></div>
 
 <script>
-  // ===== パネル構成 =====
-  // 3×3, 4×4, 5×5, 6×6 をぐるぐる回して 15枚
-  const PANEL_CONFIGS = [];
-  const sizes = [3, 4, 5, 6];
-  for (let i = 0; i < 15; i++) {
-    const s = sizes[i % sizes.length];
-    PANEL_CONFIGS.push({
-      id: "panel_" + i,
-      cols: s,
-      rows: s
-    });
-  }
+  // ===== 基本設定 =====
+  const BOARD_COLS = 40;          // 盤全体のマス数（横）
+  const BOARD_ROWS = 40;          // 盤全体のマス数（縦）
+  const CELL_PX    = 24;          // 1マスのピクセルサイズ
+  const PANEL_COUNT = 15;         // パネル枚数
+  const MIN_PANEL_SIZE = 3;       // 1パネルの最小マス数（正方形）
+  const MAX_PANEL_SIZE = 6;       // 最大マス数
 
   const MIN_ZOOM = 0.5;
   const MAX_ZOOM = 2.5;
   const ZOOM_STEP = 0.2;
 
-  // 残り回数
+  // 状態
   let zoomLevel = 1.0;
   let quotaTotal = 0;
   let quotaUsed  = 0;
 
-  // パネルごとの開封状態
-  const panelStates = {};
-  PANEL_CONFIGS.forEach(cfg => {
-    panelStates[cfg.id] = new Array(cfg.cols * cfg.rows).fill(false);
-  });
+  // パネル情報
+  // { id, size, x, y, opened[ size*size ] }
+  const panels = [];
 
   // DOM
-  const panelGrid         = document.getElementById("panelGrid");
+  const boardInner        = document.getElementById("boardInner");
   const boardScaleWrapper = document.getElementById("boardScaleWrapper");
   const zoomValueEl       = document.getElementById("zoomValue");
   const zoomInBtn         = document.getElementById("zoomInBtn");
@@ -468,7 +482,7 @@
   const chargeBtn         = document.getElementById("chargeBtn");
   const resetBtn          = document.getElementById("resetBtn");
 
-  // ===== UI系 =====
+  // ===== UIユーティリティ =====
   function showToast(msg, type = "info") {
     toastEl.textContent = msg;
     toastEl.classList.remove("error", "show");
@@ -495,49 +509,109 @@
     boardScaleWrapper.style.transform = `scale(${zoomLevel})`;
     zoomValueEl.textContent = zoomLevel.toFixed(1) + "×";
   }
+
   function setZoom(v) {
     zoomLevel = Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, v));
     applyZoom();
   }
 
-  // ===== パネル生成 =====
-  function createPanels() {
+  // ===== パネル配置ロジック =====
+  // 占有マップ（重なりチェック用）
+  const occupied = new Array(BOARD_COLS * BOARD_ROWS).fill(false);
+  function idx(x, y) { return y * BOARD_COLS + x; }
+
+  function canPlace(size, x, y) {
+    if (x < 0 || y < 0) return false;
+    if (x + size > BOARD_COLS || y + size > BOARD_ROWS) return false;
+    for (let dy = 0; dy < size; dy++) {
+      for (let dx = 0; dx < size; dx++) {
+        if (occupied[idx(x + dx, y + dy)]) return false;
+      }
+    }
+    return true;
+  }
+
+  function occupy(size, x, y) {
+    for (let dy = 0; dy < size; dy++) {
+      for (let dx = 0; dx < size; dx++) {
+        occupied[idx(x + dx, y + dy)] = true;
+      }
+    }
+  }
+
+  function randomInt(min, maxInclusive) {
+    return Math.floor(Math.random() * (maxInclusive - min + 1)) + min;
+  }
+
+  function generatePanels() {
+    let created = 0;
+    let safety = 0;
+    while (created < PANEL_COUNT && safety < 1000) {
+      safety++;
+      const size = randomInt(MIN_PANEL_SIZE, MAX_PANEL_SIZE);
+      const x = randomInt(0, BOARD_COLS - size);
+      const y = randomInt(0, BOARD_ROWS - size);
+      if (!canPlace(size, x, y)) continue;
+
+      occupy(size, x, y);
+      const id = "panel_" + created;
+      const opened = new Array(size * size).fill(false);
+      panels.push({ id, size, x, y, opened });
+      created++;
+    }
+  }
+
+  // ===== DOM生成 =====
+  function createPanelElements() {
     const frag = document.createDocumentFragment();
-    PANEL_CONFIGS.forEach(cfg => {
-      const panel = document.createElement("div");
-      panel.className = "image-panel";
-      panel.dataset.panelId = cfg.id;
+
+    panels.forEach(panel => {
+      const px = panel.x * CELL_PX;
+      const py = panel.y * CELL_PX;
+      const sizePx = panel.size * CELL_PX;
+
+      const panelEl = document.createElement("div");
+      panelEl.className = "image-panel";
+      panelEl.style.left   = px + "px";
+      panelEl.style.top    = py + "px";
+      panelEl.style.width  = sizePx + "px";
+      panelEl.style.height = sizePx + "px";
+      panelEl.dataset.panelId = panel.id;
 
       const grid = document.createElement("div");
-      grid.className = "dot-block-grid";
-      grid.style.gridTemplateColumns = `repeat(${cfg.cols}, 1fr)`;
-      grid.style.gridTemplateRows    = `repeat(${cfg.rows}, 1fr)`;
+      grid.className = "dot-grid";
+      grid.style.gridTemplateColumns = `repeat(${panel.size}, 1fr)`;
+      grid.style.gridTemplateRows    = `repeat(${panel.size}, 1fr)`;
 
-      const total = cfg.cols * cfg.rows;
+      const total = panel.size * panel.size;
       for (let i = 0; i < total; i++) {
         const cell = document.createElement("button");
         cell.type = "button";
         cell.className = "dot-cell";
-        cell.dataset.panelId = cfg.id;
-        cell.dataset.index   = String(i);
+        cell.dataset.panelId = panel.id;
+        cell.dataset.index = String(i);
         cell.addEventListener("click", onDotClick);
         grid.appendChild(cell);
       }
 
-      panel.appendChild(grid);
-      frag.appendChild(panel);
+      panelEl.appendChild(grid);
+      frag.appendChild(panelEl);
     });
-    panelGrid.appendChild(frag);
+
+    boardInner.style.width  = (BOARD_COLS * CELL_PX) + "px";
+    boardInner.style.height = (BOARD_ROWS * CELL_PX) + "px";
+    boardInner.appendChild(frag);
   }
 
-  // ===== ドットクリック =====
+  // ===== ドット開封 =====
   function onDotClick(e) {
     const btn = e.currentTarget;
     const panelId = btn.dataset.panelId;
-    const idx     = Number(btn.dataset.index);
+    const index = Number(btn.dataset.index);
 
-    const state = panelStates[panelId];
-    if (!state || state[idx]) return; // 既に開封済み
+    const panel = panels.find(p => p.id === panelId);
+    if (!panel) return;
+    if (panel.opened[index]) return;
 
     const remaining = quotaTotal - quotaUsed;
     if (remaining <= 0) {
@@ -545,11 +619,11 @@
       return;
     }
 
-    state[idx] = true;
+    panel.opened[index] = true;
     quotaUsed++;
     btn.classList.add("opened");
     updateQuotaUI();
-    showToast("ドットを1つ開封しました。（残り " + (quotaTotal - quotaUsed) + "）");
+    showToast(`ドットを1つ開封しました。（残り ${quotaTotal - quotaUsed} ）`);
   }
 
   // ===== イベント =====
@@ -564,7 +638,7 @@
       showToast("メールアドレスとslugを入力して。", "error");
       return;
     }
-    // 本番ではここで GAS の /charge を呼び出す
+    // 本番ではここで GAS の /charge を叩く。
     quotaTotal += 3; // デモ：+3
     updateQuotaUI();
     showToast("デモ：3回分チャージしました。");
@@ -579,7 +653,8 @@
 
   // ===== 初期化 =====
   function init() {
-    createPanels();
+    generatePanels();
+    createPanelElements();
     updateQuotaUI();
     applyZoom();
   }
