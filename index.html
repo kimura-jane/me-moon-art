@@ -122,8 +122,9 @@
       box-shadow: 0 0 0 1px rgba(0,0,0,0.7);
     }
     .board-grid-background-inner {
-      width: calc(24 * 24px);  /* 24×24 マスの盤面 */
-      height: calc(24 * 24px);
+      /* JS 側でも width/height をセットするが、一応 16×16 ベースにしておく */
+      width: calc(16 * 24px);
+      height: calc(16 * 24px);
       position: relative;
     }
 
@@ -446,8 +447,8 @@
 
 <script>
   // ===== 基本設定 =====
-  const BOARD_COLS = 24;          // 盤のマス数（横）
-  const BOARD_ROWS = 24;          // 盤のマス数（縦）
+  const BOARD_COLS = 16;          // 盤のマス数（横）→ 小さくしてギュッと
+  const BOARD_ROWS = 16;          // 盤のマス数（縦）
   const CELL_PX    = 24;          // 1マスのピクセル
 
   const MIN_ZOOM = 0.5;
@@ -460,12 +461,12 @@
   let quotaUsed  = 0;
 
   // 4つのパネル（3×3, 4×4, 5×5, 6×6）を近くに並べて配置
-  // 位置は盤中央付近に手動で配置
+  // 盤の左上から少しだけ余白を取って、上下左右1マス空け程度で固める
   const panels = [
-    { id: "panel_3", size: 3, x: 4,  y: 4  }, // 左上：3×3
-    { id: "panel_4", size: 4, x: 10, y: 4  }, // 右上：4×4
-    { id: "panel_5", size: 5, x: 4,  y: 12 }, // 左下：5×5
-    { id: "panel_6", size: 6, x: 11, y: 12 }  // 右下：6×6
+    { id: "panel_3", size: 3, x: 1, y: 1 },   // 左上：3×3
+    { id: "panel_4", size: 4, x: 6, y: 1 },   // 右上：4×4
+    { id: "panel_5", size: 5, x: 1, y: 7 },   // 左下：5×5
+    { id: "panel_6", size: 6, x: 8, y: 7 }    // 右下：6×6
   ];
   panels.forEach(p => {
     p.opened = new Array(p.size * p.size).fill(false);
